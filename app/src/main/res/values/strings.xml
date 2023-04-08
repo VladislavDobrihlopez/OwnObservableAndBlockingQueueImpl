@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">OwnObservableImpl</string>
+    <string name="produce_messages">Produce messages</string>
+    <string name="pattern_elapsed_time">%d seconds</string>
+</resources>
