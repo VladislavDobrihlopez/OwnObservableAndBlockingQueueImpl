@@ -2,15 +2,17 @@ package com.voitov.ownobservableimpl;
 
 import static com.voitov.ownobservableimpl.ProduceConsumerBenchmarkUseCase.OnBenchmarkListener;
 
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkListener> {
     private static final int MILLIS_IN_SECONDS = 1000;
@@ -63,9 +65,14 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
         startExecutionBenchmarkTimestamp = System.currentTimeMillis();
 
         //report watcher thread
-        poolExecutor.execute(new Runnable() {
+        new AsyncTask<Void, Void, Void>() {
             @Override
-            public void run() {
+            protected void onPreExecute() {
+                super.onPreExecute();
+            }
+
+            @Override
+            protected Void doInBackground(Void... voids) {
                 synchronized (PRODUCER_CONSUMER_LOCK) {
                     while (numOfReceivedMessages < NUM_OF_MESSAGES_TO_RECEIVE) {
                         try {
@@ -74,10 +81,16 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
                             e.printStackTrace();
                         }
                     }
-                    notifySuccess();
                 }
+                return null;
             }
-        });
+
+            @Override
+            protected void onPostExecute(Void unused) {
+                super.onPostExecute(unused);
+                notifySuccess();
+            }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 
         //consumer thread
         poolExecutor.execute(new Runnable() {
