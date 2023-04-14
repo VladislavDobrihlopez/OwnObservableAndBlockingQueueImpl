@@ -1,7 +1,5 @@
 package com.voitov.ownobservableimpl;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import java.util.concurrent.SynchronousQueue;
@@ -10,15 +8,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class ApplicationCompositionRule {
-    private Handler uiHandler;
     private ThreadPoolExecutor poolExecutor;
-
-    public Handler getUiHandler() {
-        if (uiHandler == null) {
-            uiHandler = new Handler(Looper.getMainLooper());
-        }
-        return uiHandler;
-    }
 
     public ThreadPoolExecutor getPoolExecutor() {
         if (poolExecutor == null) {

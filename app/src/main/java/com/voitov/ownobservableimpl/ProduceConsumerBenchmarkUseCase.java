@@ -1,7 +1,5 @@
 package com.voitov.ownobservableimpl;
 
-import android.os.Handler;
-
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -12,21 +10,15 @@ public class ProduceConsumerBenchmarkUseCase {
     private final int NUM_OF_MESSAGES_TO_RECEIVE = 10000;
     private final int NUM_OF_MESSAGES_TO_BE_SENT = 10000;
     private final Object PRODUCER_CONSUMER_LOCK = new Object();
-    private final Handler handler;
     private final ThreadPoolExecutor poolExecutor;
 
-    public ProduceConsumerBenchmarkUseCase(Handler handler, ThreadPoolExecutor threadPoolExecutor) {
-        this.handler = handler;
+    public ProduceConsumerBenchmarkUseCase(ThreadPoolExecutor threadPoolExecutor) {
         poolExecutor = threadPoolExecutor;
     }
 
     private MyBlockingQueue<String> queue;
     private long startExecutionBenchmarkTimestamp;
     private int numOfReceivedMessages;
-
-    public static interface OnBenchmarkListener {
-        public void onBenchmarkCompleted(ScreenState state);
-    }
 
     private void init() {
         synchronized (PRODUCER_CONSUMER_LOCK) {
@@ -66,7 +58,7 @@ public class ProduceConsumerBenchmarkUseCase {
                         try {
                             PRODUCER_CONSUMER_LOCK.wait();
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            return new ScreenState.ComputationCancelled();
                         }
                     }
                     int seconds = getElapsedSeconds();

@@ -10,6 +10,7 @@ import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
@@ -19,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBarGoingOn;
 
     private ProduceConsumerBenchmarkUseCase useCase;
+    private Disposable disposable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private void setupDI() {
         ApplicationCompositionRule composition = ((MyApplication) getApplication()).getCompositionRoot();
         useCase = new ProduceConsumerBenchmarkUseCase(
-                composition.getUiHandler(),
                 composition.getPoolExecutor()
         );
     }
@@ -48,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 progressBarGoingOn.setVisibility(View.VISIBLE);
                 buttonMessageProducer.setEnabled(false);
-                useCase.startBenchmarking()
+                disposable = useCase.startBenchmarking()
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(MainActivity.this::onBenchmarkCompleted);
@@ -71,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        if (disposable != null) {
+            disposable.dispose();
+        }
     }
 
     @UiThread
@@ -79,6 +83,10 @@ public class MainActivity extends AppCompatActivity {
             ScreenState.ComputationCompleted explicitCast = (ScreenState.ComputationCompleted) state;
             textViewElapsedTime.setText(String.format(getResources().getString(R.string.pattern_elapsed_time), explicitCast.getElapsedTime()));
             textViewConsumedMessages.setText(String.valueOf(explicitCast.getConsumedMessages()));
+            progressBarGoingOn.setVisibility(View.GONE);
+            buttonMessageProducer.setEnabled(true);
+        } else if (state instanceof ScreenState.ComputationCancelled) {
+            textViewConsumedMessages.setText("Computation was cancelled");
             progressBarGoingOn.setVisibility(View.GONE);
             buttonMessageProducer.setEnabled(true);
         } else {

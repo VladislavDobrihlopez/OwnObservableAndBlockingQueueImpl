@@ -18,4 +18,7 @@ public abstract class ScreenState {
             return consumedMessages;
         }
     }
+
+    public static class ComputationCancelled extends ScreenState {
+    }
 }
