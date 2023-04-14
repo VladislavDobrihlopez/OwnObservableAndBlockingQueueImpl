@@ -2,10 +2,12 @@ package com.voitov.ownobservableimpl;
 
 import static com.voitov.ownobservableimpl.ProduceConsumerBenchmarkUseCase.OnBenchmarkListener;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadPoolExecutor;
+
+import io.reactivex.Observable;
 
 public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkListener> {
     private static final int MILLIS_IN_SECONDS = 1000;
@@ -28,28 +30,39 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
         public void onBenchmarkCompleted(ScreenState state);
     }
 
-    public void startBenchmarkingWithCallback() {
-        init();
-        startManagerAndNotify();
-    }
-
     private void init() {
-        numOfReceivedMessages = 0;
-        queue = new MyBlockingQueue<String>();
+        synchronized (PRODUCER_CONSUMER_LOCK) {
+            startExecutionBenchmarkTimestamp = System.currentTimeMillis();
+            numOfReceivedMessages = 0;
+            queue = new MyBlockingQueue<String>();
+        }
     }
 
-    private void startManagerAndNotify() {
-        startExecutionBenchmarkTimestamp = System.currentTimeMillis();
-
+    public Observable<ScreenState> startBenchmarking() {
         //report watcher thread
-        new AsyncTask<Void, Void, Void>() {
+        return Observable.fromCallable(new Callable<ScreenState>() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-            }
+            public ScreenState call() throws Exception {
+                init();
 
-            @Override
-            protected Void doInBackground(Void... voids) {
+                poolExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < NUM_OF_MESSAGES_TO_RECEIVE; i++) {
+                            startMessageConsumer();
+                        }
+                    }
+                });
+
+                poolExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < NUM_OF_MESSAGES_TO_BE_SENT; i++) {
+                            startMessageProducer(i);
+                        }
+                    }
+                });
+
                 synchronized (PRODUCER_CONSUMER_LOCK) {
                     while (numOfReceivedMessages < NUM_OF_MESSAGES_TO_RECEIVE) {
                         try {
@@ -58,33 +71,10 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
                             e.printStackTrace();
                         }
                     }
-                }
-                return null;
-            }
+                    int seconds = getElapsedSeconds();
+                    int receivedMessages = numOfReceivedMessages;
 
-            @Override
-            protected void onPostExecute(Void unused) {
-                super.onPostExecute(unused);
-                notifySuccess();
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-
-        //consumer thread
-        poolExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < NUM_OF_MESSAGES_TO_RECEIVE; i++) {
-                    startMessageConsumer();
-                }
-            }
-        });
-
-        //producer thread
-        poolExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < NUM_OF_MESSAGES_TO_BE_SENT; i++) {
-                    startMessageProducer(i);
+                    return new ScreenState.ComputationCompleted(seconds, receivedMessages);
                 }
             }
         });
@@ -115,21 +105,6 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
             @Override
             public void run() {
                 queue.put(index + " some message");
-            }
-        });
-    }
-
-    private void notifySuccess() {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                int seconds = getElapsedSeconds();
-                int receivedMessages = numOfReceivedMessages;
-
-                ScreenState state = new ScreenState.ComputationCompleted(seconds, receivedMessages);
-                for (OnBenchmarkListener listener : getListeners()) {
-                    listener.onBenchmarkCompleted(state);
-                }
             }
         });
     }

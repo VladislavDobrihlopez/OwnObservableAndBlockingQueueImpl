@@ -9,6 +9,9 @@ import android.widget.TextView;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+
 public class MainActivity extends AppCompatActivity implements ProduceConsumerBenchmarkUseCase.OnBenchmarkListener {
     private Button buttonMessageProducer;
     private TextView textViewElapsedTime;
@@ -45,7 +48,10 @@ public class MainActivity extends AppCompatActivity implements ProduceConsumerBe
             public void onClick(View v) {
                 progressBarGoingOn.setVisibility(View.VISIBLE);
                 buttonMessageProducer.setEnabled(false);
-                useCase.startBenchmarkingWithCallback();
+                useCase.startBenchmarking()
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(MainActivity.this::onBenchmarkCompleted);
             }
         });
     }
