@@ -2,46 +2,16 @@ package com.voitov.ownobservableimpl;
 
 import static com.voitov.ownobservableimpl.ProduceConsumerBenchmarkUseCase.OnBenchmarkListener;
 
-import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import com.techyourchance.threadposter.BackgroundThreadPoster;
+import com.techyourchance.threadposter.UiThreadPoster;
 
 public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkListener> {
     private static final int MILLIS_IN_SECONDS = 1000;
     private final int NUM_OF_MESSAGES_TO_RECEIVE = 10000;
     private final int NUM_OF_MESSAGES_TO_BE_SENT = 10000;
     private final Object PRODUCER_CONSUMER_LOCK = new Object();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Object syncPoolExecutor = new Object();
-    private final ThreadPoolExecutor poolExecutor = new ThreadPoolExecutor(
-            0,
-            Integer.MAX_VALUE,
-            60L,
-            TimeUnit.SECONDS,
-            new SynchronousQueue<>(),
-            new ThreadFactory() {
-                @Override
-                public Thread newThread(Runnable runnable) {
-                    synchronized (syncPoolExecutor) {
-                        Log.d("ProduceConsumerUseCase",
-                                String.format("size: %s, active: %s, remaining: %s",
-                                        poolExecutor.getPoolSize(),
-                                        poolExecutor.getActiveCount(),
-                                        poolExecutor.getQueue().remainingCapacity()));
-                    }
-                    return new Thread(runnable);
-                }
-            }
-    );
-    //private final ExecutorService poolExecutor = Executors.newCachedThreadPool();
+    private final UiThreadPoster uiThreadPoster = new UiThreadPoster();
+    private final BackgroundThreadPoster backgroundThreadPoster = new BackgroundThreadPoster();
 
     private MyBlockingQueue<String> queue;
     private long startExecutionBenchmarkTimestamp;
@@ -65,14 +35,9 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
         startExecutionBenchmarkTimestamp = System.currentTimeMillis();
 
         //report watcher thread
-        new AsyncTask<Void, Void, Void>() {
+        backgroundThreadPoster.post(new Runnable() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-            }
-
-            @Override
-            protected Void doInBackground(Void... voids) {
+            public void run() {
                 synchronized (PRODUCER_CONSUMER_LOCK) {
                     while (numOfReceivedMessages < NUM_OF_MESSAGES_TO_RECEIVE) {
                         try {
@@ -81,19 +46,13 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
                             e.printStackTrace();
                         }
                     }
+                    notifySuccess();
                 }
-                return null;
             }
-
-            @Override
-            protected void onPostExecute(Void unused) {
-                super.onPostExecute(unused);
-                notifySuccess();
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        });
 
         //consumer thread
-        poolExecutor.execute(new Runnable() {
+        backgroundThreadPoster.post(new Runnable() {
             @Override
             public void run() {
                 for (int i = 0; i < NUM_OF_MESSAGES_TO_RECEIVE; i++) {
@@ -103,7 +62,7 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
         });
 
         //producer thread
-        poolExecutor.execute(new Runnable() {
+        backgroundThreadPoster.post(new Runnable() {
             @Override
             public void run() {
                 for (int i = 0; i < NUM_OF_MESSAGES_TO_BE_SENT; i++) {
@@ -114,7 +73,7 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
     }
 
     private void startMessageConsumer() {
-        poolExecutor.execute(new Runnable() {
+        backgroundThreadPoster.post(new Runnable() {
             @Override
             public void run() {
                 String message;
@@ -134,7 +93,7 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
     }
 
     private void startMessageProducer(final int index) {
-        poolExecutor.execute(new Runnable() {
+        backgroundThreadPoster.post(new Runnable() {
             @Override
             public void run() {
                 queue.put(index + " some message");
@@ -143,7 +102,7 @@ public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkL
     }
 
     private void notifySuccess() {
-        handler.post(new Runnable() {
+        uiThreadPoster.post(new Runnable() {
             @Override
             public void run() {
                 int seconds = getElapsedSeconds();
