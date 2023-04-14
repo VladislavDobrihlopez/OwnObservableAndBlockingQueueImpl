@@ -1,7 +1,5 @@
 package com.voitov.ownobservableimpl;
 
-import static com.voitov.ownobservableimpl.ProduceConsumerBenchmarkUseCase.OnBenchmarkListener;
-
 import android.os.Handler;
 
 import java.util.concurrent.Callable;
@@ -9,7 +7,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import io.reactivex.Observable;
 
-public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkListener> {
+public class ProduceConsumerBenchmarkUseCase {
     private static final int MILLIS_IN_SECONDS = 1000;
     private final int NUM_OF_MESSAGES_TO_RECEIVE = 10000;
     private final int NUM_OF_MESSAGES_TO_BE_SENT = 10000;

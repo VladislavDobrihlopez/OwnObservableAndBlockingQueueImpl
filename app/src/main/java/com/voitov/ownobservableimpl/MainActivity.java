@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
 
-public class MainActivity extends AppCompatActivity implements ProduceConsumerBenchmarkUseCase.OnBenchmarkListener {
+public class MainActivity extends AppCompatActivity {
     private Button buttonMessageProducer;
     private TextView textViewElapsedTime;
     private TextView textViewConsumedMessages;
@@ -66,18 +66,15 @@ public class MainActivity extends AppCompatActivity implements ProduceConsumerBe
     @Override
     protected void onStart() {
         super.onStart();
-        useCase.registerListener(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        useCase.unregisterListener(this);
     }
 
     @UiThread
-    @Override
-    public void onBenchmarkCompleted(ScreenState state) {
+    private void onBenchmarkCompleted(ScreenState state) {
         if (state instanceof ScreenState.ComputationCompleted) {
             ScreenState.ComputationCompleted explicitCast = (ScreenState.ComputationCompleted) state;
             textViewElapsedTime.setText(String.format(getResources().getString(R.string.pattern_elapsed_time), explicitCast.getElapsedTime()));
