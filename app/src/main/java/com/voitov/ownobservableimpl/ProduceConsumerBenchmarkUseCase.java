@@ -4,44 +4,21 @@ import static com.voitov.ownobservableimpl.ProduceConsumerBenchmarkUseCase.OnBen
 
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class ProduceConsumerBenchmarkUseCase extends BaseObservable<OnBenchmarkListener> {
     private static final int MILLIS_IN_SECONDS = 1000;
     private final int NUM_OF_MESSAGES_TO_RECEIVE = 10000;
     private final int NUM_OF_MESSAGES_TO_BE_SENT = 10000;
     private final Object PRODUCER_CONSUMER_LOCK = new Object();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Object syncPoolExecutor = new Object();
-    private final ThreadPoolExecutor poolExecutor = new ThreadPoolExecutor(
-            0,
-            Integer.MAX_VALUE,
-            60L,
-            TimeUnit.SECONDS,
-            new SynchronousQueue<>(),
-            new ThreadFactory() {
-                @Override
-                public Thread newThread(Runnable runnable) {
-                    synchronized (syncPoolExecutor) {
-                        Log.d("ProduceConsumerUseCase",
-                                String.format("size: %s, active: %s, remaining: %s",
-                                        poolExecutor.getPoolSize(),
-                                        poolExecutor.getActiveCount(),
-                                        poolExecutor.getQueue().remainingCapacity()));
-                    }
-                    return new Thread(runnable);
-                }
-            }
-    );
-    //private final ExecutorService poolExecutor = Executors.newCachedThreadPool();
+    private final Handler handler;
+    private final ThreadPoolExecutor poolExecutor;
+
+    public ProduceConsumerBenchmarkUseCase(Handler handler, ThreadPoolExecutor threadPoolExecutor) {
+        this.handler = handler;
+        poolExecutor = threadPoolExecutor;
+    }
 
     private MyBlockingQueue<String> queue;
     private long startExecutionBenchmarkTimestamp;

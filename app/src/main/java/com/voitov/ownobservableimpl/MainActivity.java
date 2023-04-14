@@ -1,13 +1,13 @@
 package com.voitov.ownobservableimpl;
 
-import androidx.annotation.UiThread;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import androidx.annotation.UiThread;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity implements ProduceConsumerBenchmarkUseCase.OnBenchmarkListener {
     private Button buttonMessageProducer;
@@ -19,13 +19,20 @@ public class MainActivity extends AppCompatActivity implements ProduceConsumerBe
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setupDI();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         initViews();
         initState();
+    }
 
-        //DI to be added
-        useCase = new ProduceConsumerBenchmarkUseCase();
+    private void setupDI() {
+        ApplicationCompositionRule composition = ((MyApplication) getApplication()).getCompositionRoot();
+        useCase = new ProduceConsumerBenchmarkUseCase(
+                composition.getUiHandler(),
+                composition.getPoolExecutor()
+        );
     }
 
     private void initState() {
